@@ -83,7 +83,7 @@ export const login = async (req, res) => {
     return res.status(200).json({
       message: "User login successfully",
       token,
-      user
+      user,
     });
   } catch (error) {
     console.error(error);
