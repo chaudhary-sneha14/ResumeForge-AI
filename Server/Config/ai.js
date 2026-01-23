@@ -5,3 +5,9 @@ const ai = new OpenAI({
     baseURL:process.env.OpenAI_BASE_URL
 });
 export default ai
+
+// Cover Letter Generator
+
+// Skill Gap Planner
+
+// Progress Tracking
