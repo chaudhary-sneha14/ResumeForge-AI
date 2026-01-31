@@ -1,4 +1,6 @@
 import ai from "../Config/ai.js";
+// import {v2 as cloudinary} from 'cloudinary'
+import { connectCloudinary } from "../Config/cloudinary.js";
 import Resume from "../Model/resumeModel.js";
 
 export const enhanceProfessionalSummary = async (req, res) => {
@@ -74,90 +76,67 @@ export const enhanceJobDescription = async (req, res) => {
 
 //controller for uploading resume to database
 
-export const uploadResume = async (req, res) => {
-  try {
-   const{resumeText,title}=req.body
-   const userId=req.userId
 
-   if (!resumeText) {
-      return res.status(400).json({ message: "Missing required fields" });
+
+
+
+import fs from "fs";
+
+export const uploadResume = async (req, res) => {
+  const cloudinary = connectCloudinary();
+  try {
+    const pdfFile = req.file;
+
+    if (!pdfFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume file not attached"
+      });
     }
 
-    const systemPrompt="You are an expert AI Agent to extract data from resume."
-    const userPrompt=`extract data from this resume: ${resumeText} Provide data in the following JSON format with no additional text before or after:
-    { 
-     professional_summary:{type:String,default:''},
-    skills: [{ type: String }],
+    // Upload PDF to Cloudinary using file path
+    const pdfUpload = await cloudinary.uploader.upload(pdfFile.path, {
+  folder: "resumes",
+  resource_type: "image",
+  format: "pdf",
+});
 
-    personal_info:{
-        image:{type:String,default:''},
-        full_name:{type:String,default:''},
-        profession:{type:String,default:''},
-        email:{type:String,default:''},
-        phone:{type:String,default:''},
-        location:{type:String,default:''},
-        linkedin:{type:String,default:''},
-        website:{type:String,default:''},
-        github:{type:String,default:''},
-    },
-    experience:[
-        {
-            company:{type:String},
-            position:{type:String},
-            start_date:{type:String},
-            end_date:{type:String},
-            description:{type:String},
-            is_current: { type: Boolean }
-        }
-    ],
-    project:[
-        {
-            name:{type:String},
-            type:{type:String},
-            description:{type:String},
-        }
-    ],    
-    achievement:[
-        {
-            name:{type:String},
-            description:{type:String},
-        }
-    ],
-     education:[
-        {
-            institution:{type:String},
-            degree:{type:String},
-            field:{type:String},
-            graduation_date:{type:String},
-            gpa:{type:String},
-        }
-    ]
-    }`
+    // Delete local temp file
+    fs.unlinkSync(pdfFile.path);
 
-    const response = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL ,
-      messages: [
-        {
-          role: "system",
-          content:
-            systemPrompt
-        },
-        {
-          role: "user",
-          content: userPrompt,
-        },
-      ],
-      response_format:{type:'json_object'}
+    const newResume = await Resume.create({
+      userId: req.userId,
+      title: pdfFile.originalname,
+      fileUrl: pdfUpload.secure_url
     });
 
-    const extractData = response.choices[0].message.content;
-    const parseData=JSON.parse(extractData)
-    const newResume=await Resume.create({userId,title,...parseData})
+    return res.status(201).json({
+      success: true,
+      resume: newResume
+    });
 
-    res.json({resumeId:newResume._id})
   } catch (error) {
-    console.error("AI Error:", error);
-    return res.status(500).json({ message: error.message });
+    console.error("Resume upload error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+//------------------get resume--------------
+export const getMyResumes = async (req, res) => {
+  try {
+    const resumes = await Resume.find({ userId: req.userId })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      resumes,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -255,26 +234,34 @@ export const keywordGapAnalyzer = async (req, res) => {
     const { resumeId } = req.params;
 
     if (!jobDescription) {
-      return res.status(400).json({ message: "Job description is required" });
+      return res.status(400).json({
+        message: "Job description is required",
+      });
     }
 
     const resume = await Resume.findById(resumeId);
+
     if (!resume) {
-      return res.status(404).json({ message: "Resume not found" });
+      return res.status(404).json({
+        message: "Resume not found",
+      });
     }
 
     if (resume.userId.toString() !== req.userId) {
-      return res.status(403).json({ message: "Not your resume" });
+      return res.status(403).json({
+        message: "Not your resume",
+      });
     }
 
+    // ---------- AI ANALYSIS ----------
     const prompt = `
 You are an ATS system.
 
 Tasks:
-1) From job description, extract important keywords.
-2) Check which of those are missing from resume.
-3) Find weak or generic words in resume (like: worked, helped, did, responsible for).
-4) Suggest strong action verbs to replace weak words.
+1) Extract important keywords from job description.
+2) Check which keywords are missing from resume.
+3) Find weak words.
+4) Suggest strong action verbs.
 
 Return ONLY valid JSON:
 
@@ -288,7 +275,8 @@ Resume:
 ${JSON.stringify(resume, null, 2)}
 
 Job Description:
-${jobDescription}`;
+${jobDescription}
+`;
 
     const response = await ai.chat.completions.create({
       model: "gemini-3-flash-preview",
@@ -297,26 +285,106 @@ ${jobDescription}`;
     });
 
     const raw = response.choices?.[0]?.message?.content;
+
     if (!raw) {
-      return res.status(500).json({ message: "AI returned empty response" });
+      return res.status(500).json({
+        message: "AI returned empty response",
+      });
     }
 
     let data;
     try {
       data = JSON.parse(raw);
     } catch {
-      return res.status(500).json({ message: "Invalid JSON from AI" });
+      return res.status(500).json({
+        message: "Invalid JSON from AI",
+      });
     }
+
+    const missingKeywords = data.missingKeywords || [];
+    const weakWords = data.weakWords || [];
+    const strongAlternatives = data.strongAlternatives || [];
+
+    // ---------- SKILL MATCH ENGINE ----------
+    const resumeText = JSON.stringify(resume).toLowerCase();
+    const jdText = jobDescription.toLowerCase();
+
+    // tech skill dictionary
+    const techKeywords = [
+      "node", "nodejs", "express", "react",
+      "mongodb", "mysql", "javascript",
+      "typescript", "docker", "kubernetes",
+      "redis", "aws", "gcp", "azure",
+      "api", "rest", "graphql",
+      "microservices", "jwt", "oauth",
+      "sql", "nosql", "backend",
+      "frontend", "fullstack",
+      "python", "machine learning",
+      "tensorflow", "pytorch",
+      "nlp", "data science"
+    ];
+
+    // skills required in JD
+    const requiredSkills = techKeywords.filter(skill =>
+      jdText.includes(skill)
+    );
+
+    let matchedSkills = 0;
+
+    requiredSkills.forEach(skill => {
+      if (resumeText.includes(skill)) {
+        matchedSkills++;
+      }
+    });
+
+    // match percentage
+    const skillMatchPercent =
+      requiredSkills.length > 0
+        ? matchedSkills / requiredSkills.length
+        : 0;
+
+    // score out of 100
+    const skillScore = skillMatchPercent * 100;
+
+    // ---------- WEAK WORD PENALTY ----------
+    const weakPenalty = Math.min(
+      weakWords.length * 2,
+      20
+    );
+
+    // ---------- FINAL ATS SCORE ----------
+    let atsScore = skillScore - weakPenalty;
+
+    // clamp score
+    atsScore = Math.max(
+      10,
+      Math.min(100, Math.round(atsScore))
+    );
+
+    // ---------- SAVE SCORE ----------
+    await Resume.findByIdAndUpdate(resumeId, {
+      atsScore,
+    });
 
     res.status(200).json({
       success: true,
-      data,
+      data: {
+        missingKeywords,
+        weakWords,
+        strongAlternatives,
+      },
+      atsScore,
     });
+
   } catch (error) {
     console.error("Keyword Gap Error:", error);
-    res.status(500).json({ message: "Keyword analysis failed" });
+
+    res.status(500).json({
+      message: "Keyword analysis failed",
+    });
   }
 };
+
 //--------------generateInterviewQuestions-----------
 export const generateInterviewQuestions = async (req, res) => {
   try {
@@ -324,41 +392,51 @@ export const generateInterviewQuestions = async (req, res) => {
     const { resumeId } = req.params;
 
     if (!jobDescription) {
-      return res.status(400).json({ message: "Job description is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Job description is required" });
     }
 
     const resume = await Resume.findById(resumeId);
+
     if (!resume) {
-      return res.status(404).json({ message: "Resume not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Resume not found" });
     }
 
     if (resume.userId.toString() !== req.userId) {
-      return res.status(403).json({ message: "Not your resume" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Not your resume" });
     }
 
+    // ✅ UPDATED PROMPT
     const prompt = `
 You are a professional interviewer.
 
-Using the resume and job description (if provided):
+Generate interview questions AND answers.
 
-Tasks:
-- Generate technical questions based on skills and experience
-- Generate behavioral questions based on experience
-- Generate project-based questions based on listed projects
-
-Return ONLY valid JSON:
+Return ONLY valid JSON in this format:
 
 {
-  "technical": [],
-  "behavioral": [],
-  "projectBased": []
+  "technical": [
+    { "question": "", "answer": "" }
+  ],
+  "behavioral": [
+    { "question": "", "answer": "" }
+  ],
+  "projectBased": [
+    { "question": "", "answer": "" }
+  ]
 }
 
 Resume:
 ${JSON.stringify(resume, null, 2)}
 
 Job Description:
-${jobDescription || "Not provided"}`;
+${jobDescription || "Not provided"}
+`;
 
     const response = await ai.chat.completions.create({
       model: "gemini-3-flash-preview",
@@ -367,23 +445,45 @@ ${jobDescription || "Not provided"}`;
     });
 
     const raw = response.choices?.[0]?.message?.content;
+
     if (!raw) {
-      return res.status(500).json({ message: "AI returned empty response" });
+      return res.status(500).json({
+        success: false,
+        message: "AI returned empty response",
+      });
     }
 
     let data;
+
     try {
       data = JSON.parse(raw);
     } catch {
-      return res.status(500).json({ message: "Invalid JSON from AI" });
+      return res.status(500).json({
+        success: false,
+        message: "Invalid JSON from AI",
+      });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data,
     });
+
   } catch (error) {
     console.error("Interview AI Error:", error);
-    res.status(500).json({ message: "Interview generation failed" });
+
+    if (error.status === 429) {
+      return res.status(429).json({
+        success: false,
+        message:
+          "AI rate limit reached. Please wait a minute and try again.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "AI service failed.",
+    });
   }
 };
+

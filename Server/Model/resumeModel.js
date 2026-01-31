@@ -1,64 +1,110 @@
 import mongoose from "mongoose";
 
-const ResumeSchema=new mongoose.Schema({
-
-    userId:{type:mongoose.Schema.Types.ObjectId,ref:"User"},
-    title:{type:String,default:'Untitled Resume'},
-    public:{type:Boolean,default:false},
-    template:{type:String,default:"classic"},
-    accent_color:{type:String,default:"#3B82F6"},
-    professional_summary:{type:String,default:''},
-    skills: [{ type:String}],
-
-
-    personal_info:{
-        image:{type:String,default:''},
-        full_name:{type:String,default:''},
-        profession:{type:String,default:''},
-        email:{type:String,default:''},
-        phone:{type:String,default:''},
-        location:{type:String,default:''},
-        linkedin:{type:String,default:''},
-        website:{type:String,default:''},
-        github:{type:String,default:''},
+const ResumeSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-    experience:[
-        {
-            company:{type:String},
-            position:{type:String},
-            start_date:{type:String},
-            end_date:{type:String},
-            description:{type:String},
-            is_current: { type: Boolean, default: false }, // Boolean
-        }
+
+    title: {
+      type: String,
+      default: "Untitled Resume",
+    },
+
+    // Cloudinary URL
+    fileUrl: {
+      type: String,
+      required: true,
+    },
+
+    atsScore: {
+      type: Number,
+      default: null,
+    },
+
+    atsUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ---------- Parsed / AI fields (used later) ----------
+    professional_summary: {
+      type: String,
+      default: "",
+    },
+
+    skills: [
+      {
+        type: String,
+      },
     ],
-    project:[
-        {
-            name:{type:String},
-            type:{type:String},
-            description:{type:String},
-            link:{ type:String, default:'' }
 
-        }
-    ],    
-    achievement:[
-        {
-            name:{type:String},
-            description:{type:String},
-            link:{ type:String, default:'' }
-        }
+    personal_info: {
+      image: { type: String, default: "" },
+      full_name: { type: String, default: "" },
+      profession: { type: String, default: "" },
+      email: { type: String, default: "" },
+      phone: { type: String, default: "" },
+      location: { type: String, default: "" },
+      linkedin: { type: String, default: "" },
+      website: { type: String, default: "" },
+      github: { type: String, default: "" },
+    },
+
+    experience: [
+      {
+        company: String,
+        position: String,
+        start_date: String,
+        end_date: String,
+        description: String,
+        is_current: {
+          type: Boolean,
+          default: false,
+        },
+      },
     ],
-     education:[
-        {
-            institution:{type:String},
-            degree:{type:String},
-            field:{type:String},
-            graduation_date:{type:String},
-            gpa:{type:String},
-        }
-    ]
-},{timestamps:true,minimize:false})
 
-const Resume=mongoose.model('Resume',ResumeSchema)
+    projects: [
+      {
+        name: String,
+        type: String,
+        description: String,
+        link: { type: String, default: "" },
+      },
+    ],
 
-export default Resume
+    achievements: [
+      {
+        name: String,
+        description: String,
+        link: { type: String, default: "" },
+      },
+    ],
+
+    education: [
+      {
+        institution: String,
+        degree: String,
+        field: String,
+        graduation_date: String,
+        gpa: String,
+      },
+    ],
+
+    // ---------- Future ----------
+    rawText: {
+      type: String,
+      default: "",
+    },
+  },
+  {
+    timestamps: true,
+    minimize: false,
+  },
+);
+
+const Resume = mongoose.model("Resume", ResumeSchema);
+export default Resume;

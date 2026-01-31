@@ -1,3 +1,4 @@
+// models/SkillGapModel.js
 import mongoose from "mongoose";
 
 const skillGapSchema = new mongoose.Schema(
@@ -11,18 +12,19 @@ const skillGapSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    level: {
+    priority: {
       type: String,
-      enum: ["beginner", "intermediate", "advanced"],
-      default: "beginner",
+      enum: ["High", "Medium", "Low"],
+      required: true,
+    },
+    learningPath: {
+      type: String,
+      required: true,
     },
     status: {
       type: String,
       enum: ["pending", "in-progress", "completed"],
       default: "pending",
-    },
-    sourceJobTitle: {
-      type: String,
     },
   },
   { timestamps: true }

@@ -1,71 +1,135 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import axios from "axios";
+import { AppContext } from "../Context/AppContext";
+import { toast } from "react-toastify";
 
 const Login = () => {
   const navigate = useNavigate();
+
+  const [state, setState] = useState("Sign Up");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
+  const { backendUrl, token, setToken } = useContext(AppContext);
+
+  const onSubmitHandler = async (e) => {
     e.preventDefault();
-
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-
-    if (!storedUser) {
-      alert("No account found. Please sign up first.");
-      return;
+    if (state === "Sign Up") {
+      try {
+        const { data } = await axios.post(backendUrl + "/api/user/register", {
+          name,
+          email,
+          password,
+        });
+        if (data.success) {
+          localStorage.setItem("rf_token", data.token);
+          setToken(data.token);
+          toast.success("Account created successfully");
+        }
+      } catch (error) {
+       toast.error(error.response?.data?.message || "Something went wrong");
+      }
+    } else {
+      try {
+        const { data } = await axios.post(backendUrl + "/api/user/login", {
+          email,
+          password,
+        });
+        if (data.success) {
+          localStorage.setItem("rf_token", data.token);
+          setToken(data.token);
+           toast.success("Login successful");
+        }
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Something went wrong");
+      }
     }
-
-    if (storedUser.email !== email) {
-      alert("Email does not match");
-      return;
-    }
-
-    // login success → do NOT overwrite user
-    navigate("/dashboard");
   };
 
+useEffect(() => {
+  if (token) {
+    navigate("/");
+  }
+}, [token, navigate]);
+
   return (
-    <>
-      <h2 className="text-2xl font-semibold text-gray-900">
-        Welcome back
-      </h2>
-      <p className="text-sm text-gray-500 mt-1">
-        Login to your ResumeForge AI account
-      </p>
+    <form className="min-h-[80vh] flex items-center" onSubmit={onSubmitHandler}>
+      <div className="flex flex-col gap-3 m-auto items-start p-8 min-w-[340px] sm:min-w-96 border rounded-xl text-zinc-600 text-sm shadow-lg">
+        <p className="text-2xl font-semibold">
+          {state === "Sign Up" ? "Create Account" : "Login"}
+        </p>
+        <p>
+          Please {state === "Sign Up" ? "sign up" : "log in"} to book
+          appointment
+        </p>
+        {state === "Sign Up" && (
+          <div className="w-full">
+            <p>Full Name</p>
+            <input
+              className="border border-zinic-300 rounded w-full p-2 mt-1"
+              type="text"
+              onChange={(e) => setName(e.target.value)}
+              value={name}
+              required
+            />
+          </div>
+        )}
+        {/* jb state sign up then only display full name */}
 
-      <form onSubmit={handleLogin} className="mt-6 space-y-4">
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg p-3 text-sm"
-          required
-        />
-
-        {/* Password UI only for now */}
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border border-gray-300 rounded-lg p-3 text-sm"
-          required
-        />
+        <div className="w-full">
+          <p>Email</p>
+          <input
+            className="border border-zinic-300 rounded w-full p-2 mt-1"
+            type="email"
+            onChange={(e) => setEmail(e.target.value)}
+            value={email}
+            required
+          />
+        </div>
+        <div className="w-full">
+          <p>Password</p>
+          <input
+            className="border border-zinic-300 rounded w-full p-2 mt-1"
+            type="password"
+            onChange={(e) => setPassword(e.target.value)}
+            value={password}
+            required
+          />
+        </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded-lg text-sm font-medium"
+          className="bg-blue-600 text-white w-full mt-1  py-2 rounded-md text-base"
         >
-          Login
+          {state === "Sign Up" ? "Create Account" : "Login"}
         </button>
-      </form>
 
-      <p className="text-sm text-gray-500 mt-6 text-center">
-        Don’t have an account?{" "}
-        <Link to="/signup" className="text-blue-600 font-medium">
-          Sign up
-        </Link>
-      </p>
-    </>
+        {state === "Sign Up" ? (
+          <p>
+            Already have an account?{" "}
+            <span
+              onClick={() => setState("Login")}
+              className="text-primary underline cursor-pointer"
+            >
+              {" "}
+              Login here
+            </span>
+          </p>
+        ) : (
+          <p>
+            Create a new account?{" "}
+            <span
+              onClick={() => setState("Sign Up")}
+              className="text-primary underline cursor-pointer"
+            >
+              click here
+            </span>
+          </p>
+        )}
+      </div>
+    </form>
   );
 };
 

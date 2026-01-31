@@ -13,7 +13,7 @@ const coverLetterSchema = new mongoose.Schema(
     },
     company: {
       type: String,
-      required: true,
+     default: "",
     },
     tone: {
       type: String,

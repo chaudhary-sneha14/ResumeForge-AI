@@ -16,20 +16,24 @@ export const register = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
     }
 
     const user = await User.findOne({ email });
     if (user) {
-      return res
-        .status(400)
-        .json({ message: "User Already Exist with this email" });
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
     }
 
-    //hash password
+    // hash password
     const hashPassword = await bcrypt.hash(password, 10);
 
-    //new user
+    // create new user
     const newUser = await User.create({
       name,
       email,
@@ -41,15 +45,21 @@ export const register = async (req, res) => {
     newUser.password = undefined;
 
     return res.status(201).json({
+      success: true,
       message: "User created successfully",
       token,
       user: newUser,
     });
+
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
 
 // ============================================
 // 🔹 API: Login User
@@ -61,32 +71,51 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({success: false, message: "Missing required fields" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
       return res
         .status(400)
-        .json({ message: "No User  Exist with this email" });
+        .json({ success: false,message: "No User  Exist with this email" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Credentials" });
+      return res.status(400).json({success: false, message: "Invalid Credentials" });
     }
 
     const token = genrateToken(user._id);
 
     user.password = undefined;
 
+  return res.status(200).json({
+  success: true,
+  message: "User login successfully",
+  token,
+  user,
+});
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+export const getUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password");
+
     return res.status(200).json({
-      message: "User login successfully",
-      token,
+      success: true,
       user,
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

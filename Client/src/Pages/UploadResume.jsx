@@ -1,37 +1,98 @@
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
+import axios from "axios";
 import { Header } from "../Component/Header";
 import { Card } from "../Component/Card";
+import { AppContext } from "../Context/AppContext";
+import { toast } from "react-toastify";
 
-
-export const UploadResume=()=> {
+export const UploadResume = () => {
+  const { backendUrl, token } = useContext(AppContext);
   const [resumes, setResumes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleFile=(file)=>{
-    const fileUrl=URL.createObjectURL(file)
-    window.open(fileUrl,"_blank")
+  const handleDelete = async (resumeId) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this resume?",
+    );
+    if (!confirmDelete) return;
 
-  }
+    try {
+      const { data } = await axios.delete(
+        `${backendUrl}/api/resume/delete/${resumeId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      // remove from UI
+      setResumes((prev) => prev.filter((resume) => resume._id !== resumeId));
+      toast.success("Resume Deleted succesfully");
+    } catch (error) {
+      console.error("Delete failed", error);
+      alert("Failed to delete resume");
+    }
+  };
 
-  const handleUpload = (e) => {
+  // 🔹 Fetch resumes on page load / refresh
+
+  const fetchResumes = async () => {
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/ai/my-resumes`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (data.success) {
+        setResumes(data.resumes);
+      }
+    } catch (error) {
+      console.error("Failed to fetch resumes", error);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchResumes();
+    }
+  }, [token]);
+
+  // 🔹 Upload resume
+  const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setResumes((prev) => [
-      ...prev,
-      {
-        name: file.name,
-        date: new Date().toLocaleDateString(),
-        file: file
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+      formData.append("resume", file);
+
+      const { data } = await axios.post(
+        `${backendUrl}/api/ai/upload-resume`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (data.success) {
+        // prepend newly uploaded resume
+        setResumes((prev) => [data.resume, ...prev]);
       }
-    ]);
+      toast.success("Resume Uploaded Succesfully");
+    } catch (error) {
+      console.error("Upload failed", error.response?.data || error);
+      alert("Resume upload failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <>
-      <Header
-        title="Upload Resume"
-        subtitle="Upload and manage your resumes"
-      />
+      <Header title="Upload Resume" subtitle="Upload and manage your resumes" />
 
       {/* Upload box */}
       <Card>
@@ -41,37 +102,54 @@ export const UploadResume=()=> {
             accept=".pdf"
             onChange={handleUpload}
             className="hidden"
+            disabled={loading}
           />
           <p className="text-gray-700 font-medium">
-            Click to upload your resume
+            {loading ? "Uploading..." : "Click to upload your resume"}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
-            PDF only
-          </p>
+          <p className="text-sm text-gray-500 mt-1">PDF only</p>
         </label>
       </Card>
+      {loading && (
+        <p className="mt-4 text-xl text-gray-500">
+          Uploading resume… please wait
+        </p>
+      )}
 
-      {/* Uploaded resumes */}
+      {/* Uploaded resumes list */}
       {resumes.length > 0 && (
         <div className="mt-6 space-y-4">
-          {resumes.map((resume, index) => (
-            <Card key={index} className="flex justify-between items-center">
+          {resumes.map((resume) => (
+            <Card
+              key={resume._id}
+              className="flex justify-between items-center"
+            >
               <div>
-                <p className="font-medium text-gray-800">
-                  {resume.name}
-                </p>
+                <p className="font-medium text-gray-800">{resume.title}</p>
                 <p className="text-sm text-gray-500">
-                  Uploaded on {resume.date}
+                  Uploaded on {new Date(resume.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <button className="text-sm text-blue-600 font-medium"
-                onClick={() => handleFile(resume.file)}>
-                View
-              </button>
+
+              <div className="flex gap-4">
+                <button
+                  className="text-sm text-blue-600 font-medium"
+                  onClick={() => window.open(resume.fileUrl, "_blank")}
+                >
+                  View
+                </button>
+
+                <button
+                  className="text-sm text-red-500 font-medium"
+                  onClick={() => handleDelete(resume._id)}
+                >
+                  Delete
+                </button>
+              </div>
             </Card>
           ))}
         </div>
       )}
     </>
   );
-}
+};
