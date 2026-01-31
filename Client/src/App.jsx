@@ -7,14 +7,13 @@ import DashboardLayout from './layout/DashboardLayout'
 import Home from './Pages/Home'
 import Login from './Pages/Login'
 // import Signup from './Pages/Signup'
-import AuthLayout from './layout/Authlayout'
 import ResumeAnalysis from './Pages/ResumeAnalysis'
 import CoverLetter from './Pages/CoverLetter'
 import SkillGap from './Pages/SkillGap'
 import Interview from './Pages/Interview'
 import ResumeBuilder from './Pages/ResumeBuilder'
 import {ToastContainer} from 'react-toastify'
-import SkillProgress from './Pages/skillProgress'
+import SkillProgress from './Pages/SkillProgres'
 
 const App = () => {
   return (
