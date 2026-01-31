@@ -13,7 +13,7 @@ import SkillGap from './Pages/SkillGap'
 import Interview from './Pages/Interview'
 import ResumeBuilder from './Pages/ResumeBuilder'
 import {ToastContainer} from 'react-toastify'
-import SkillProgress from './Pages/SkillProgres'
+import SkillProgress from './Pages/skillProgress'
 
 const App = () => {
   return (
