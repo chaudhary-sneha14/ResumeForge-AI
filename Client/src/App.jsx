@@ -15,6 +15,7 @@ import ResumeBuilder from './Pages/ResumeBuilder'
 import {ToastContainer} from 'react-toastify'
 import SkillProgress from './Pages/skillProgress'
 
+
 const App = () => {
   return (
   <>
