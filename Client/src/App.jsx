@@ -13,7 +13,8 @@ import SkillGap from './Pages/SkillGap'
 import Interview from './Pages/Interview'
 import ResumeBuilder from './Pages/ResumeBuilder'
 import {ToastContainer} from 'react-toastify'
-import SkillProgress from './Pages/skillProgress'
+import SkillProgress from './Pages/SkillProgress'
+
 
 
 const App = () => {
@@ -40,7 +41,8 @@ const App = () => {
           <Route path="skill-gap" element={<SkillGap/>} />
           <Route path="interview" element={<Interview/>} />
           <Route path="create" element={<ResumeBuilder/>} />
-          <Route path="skill-progress" element={<SkillProgress />} />
+          <Route path="skill-progress" element={<SkillProgress/>} />
+        
 
         </Route>
 
