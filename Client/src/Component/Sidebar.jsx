@@ -25,12 +25,12 @@ export default function Sidebar() {
     localStorage.removeItem("rf_token");
     setToken(null);
     toast.success("Logged out successfully");
-    navigate("/login");
+    navigate("/");
   };
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedUser) setUserData(JSON.parse(storedUser));
   }, []);
 
   return (

@@ -1,24 +1,4 @@
-// src/components/analysis/StatsGrid.jsx
-
-export default function StatsGrid() {
-  const stats = [
-    {
-      label: "Skills Matched",
-      value: "12 / 18",
-      note: "Good coverage"
-    },
-    {
-      label: "Missing Keywords",
-      value: "6",
-      note: "Needs attention"
-    },
-    {
-      label: "Experience Match",
-      value: "70%",
-      note: "Relevant experience"
-    }
-  ];
-
+export default function StatsGrid({ stats = [] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {stats.map((item, index) => (

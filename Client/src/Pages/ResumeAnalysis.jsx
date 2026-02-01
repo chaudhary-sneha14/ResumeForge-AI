@@ -50,14 +50,13 @@ export default function ResumeAnalysis() {
         { jobDescription },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (data.success) {
         setAnalysis(data.data);
         setScore(data.atsScore); // ✅ use backend ATS
       }
-
     } catch (error) {
       console.error("Resume analysis failed", error);
       alert("Resume analysis failed");
@@ -81,7 +80,7 @@ export default function ResumeAnalysis() {
         { jobDescription },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (data.success) {
@@ -171,8 +170,23 @@ export default function ResumeAnalysis() {
           <ScoreCard score={score} />
 
           <StatsGrid
-            missing={analysis.missingKeywords.length}
-            weak={analysis.weakWords.length}
+            stats={[
+              {
+                label: "Missing Keywords",
+                value: analysis.missingKeywords.length,
+                note: "Skills not found in resume",
+              },
+              {
+                label: "Weak Words",
+                value: analysis.weakWords.length,
+                note: "Low-impact language",
+              },
+              {
+                label: "ATS Score",
+                value: score,
+                note: "Overall resume match",
+              },
+            ]}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
